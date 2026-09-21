@@ -1,0 +1,12 @@
+.git
+build
+build-native
+results
+reports
+ui/node_modules
+ui/dist
+ui/.vite
+**/__pycache__
+*.db
+*.db-wal
+*.db-shm

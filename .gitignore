@@ -1,0 +1,46 @@
+# Build output
+build/
+build-*/
+_deps/
+compile_commands.json
+CMakeUserPresets.json
+*.o
+*.a
+*.so
+
+# Run output. Tapes are large and reproducible from the config and the seed,
+# so there is no reason to commit them; the manifests record everything
+# needed to regenerate a run byte for byte.
+results/*
+!results/.gitkeep
+reports/*
+!reports/.gitkeep
+*.db
+*.db-wal
+*.db-shm
+
+# Console
+ui/node_modules/
+ui/dist/
+ui/.vite/
+npm-debug.log*
+# package-lock.json is NOT ignored: docker/Dockerfile.ui runs `npm ci` when
+# it is present, which is the only way that image build is reproducible.
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local scratch
+/tmp/
+*.log
