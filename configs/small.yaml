@@ -1,0 +1,183 @@
+# Tapewatch default configuration.
+#
+# This is the config every documented number in the README came from. It is
+# sized to run the whole pipeline -- generate, detect, evaluate, report -- in
+# a few minutes on two cores, which means it is small enough that the episode
+# counts per detector are in the dozens rather than the thousands. Read the
+# precision and recall figures with that in mind; configs/full.yaml exists for
+# when the confidence intervals matter more than the wall clock.
+
+seed: 20260920
+
+market:
+  symbols: [TWX]
+  duration_seconds: 900
+  reference_price: 10000      # minor units. Integers everywhere; no floats.
+  tick_size: 1
+  warmup_ms: 2000             # market makers quote before anyone can trade
+
+  # Fair value is a random walk that every legitimate participant is trading
+  # around. Manipulators ignore it, which is what makes them manipulators.
+  fair_value_interval_ms: 250
+  fair_value_sigma_ticks: 0.6
+
+  mm_levels: 3
+  mm_size: 30
+  mm_half_spread: 2
+  mm_interval_ms: 200
+  mm_reprice_ticks: 2         # lower values make market makers churn harder
+  mm_skew_per_lot: 0.02       # inventory skew: why a big trade moves price
+  mm_max_inventory: 400
+  # Inventory flattening: pull the quotes that add to the position, then
+  # cross to reduce. Legitimate, universal, and shaped exactly like spoofing.
+  mm_flatten_at: 180
+  mm_flatten_clip: 90
+
+  information_interval_ms: 25000
+
+participants:
+  market_makers: 4
+  noise_traders: 10
+  takers: 8
+  momentum_followers: 5
+  informed_traders: 3
+
+abuse:
+  spoofers: 2
+  spoof_interval_ms: 40000
+  layerers: 2
+  layer_interval_ms: 55000
+  wash_pairs: 2
+  wash_interval_ms: 60000
+  igniters: 2
+  ignite_interval_ms: 70000
+  ignite_size: 90            # an igniter has to be the flow, not part of it
+  ignite_orders: 8
+
+# Small but non-zero, so the recovery paths run on every single run instead
+# of only in the tests.
+feed_defects:
+  drop_rate: 0.00005       # a dropped message damages the book permanently
+  duplicate_rate: 0.00008
+  transpose_rate: 0.0002   # recoverable by the reorder buffer
+  skew_rate: 0.00015
+  skew_ms: 25
+
+# Everything under here is written out as JSON for the C++ engine by
+# tools/mkdetcfg.py. Durations are milliseconds. Weights are documented in
+# docs/detectors.md and are normalised by their sum, so they do not have to
+# add to one.
+#
+# min_score is deliberately low. The engine emits everything above this floor
+# and the operating point is chosen afterwards, in python/eval/sweep.py, by
+# re-scoring the recorded signal vectors. Raising it here would throw away the
+# left-hand end of every precision-recall curve.
+detectors:
+  tick_size: 1
+  max_resting_orders: 200000
+  window_capacity: 16384
+  scan_interval_ms: 500
+  reorder_tolerance_ms: 60
+  feed_degrade_ms: 2000
+  degrade_factor: 0.6
+
+  spoofing:
+    enabled: true
+    opposite_window_ms: 3000
+    max_lifetime_ms: 2000
+    size_depth_multiple: 3.0
+    near_touch_ticks: 5
+    min_qty: 20
+    min_score: 0.25
+    cooldown_ms: 5000
+    two_sided_penalty: 0.45
+    weights:
+      size: 0.28
+      life: 0.18
+      unfilled: 0.12
+      opposite: 0.30
+      press: 0.12
+
+  layering:
+    enabled: true
+    placement_window_ms: 4000
+    cancel_span_ms: 1500
+    opposite_window_ms: 4000
+    min_levels: 3
+    min_orders: 3
+    near_touch_ticks: 8
+    imbalance_target: 0.55
+    min_score: 0.25
+    cooldown_ms: 6000
+    two_sided_penalty: 0.30
+    weights:
+      levels: 0.24
+      imbalance: 0.24
+      coord: 0.18
+      opposite: 0.22
+      unfilled: 0.12
+
+  wash_trading:
+    enabled: true
+    window_ms: 30000
+    min_gross_qty: 40
+    recip_target: 0.70
+    share_target: 0.60
+    offmarket_ticks: 4
+    breadth_penalty: 0.45
+    breadth_target: 4.0
+    min_score: 0.25
+    cooldown_ms: 30000
+    weights:
+      self: 0.34
+      recip: 0.26
+      nonet: 0.16
+      share: 0.16
+      price: 0.08
+
+  momentum_ignition:
+    enabled: true
+    burst_ms: 2000
+    reversal_ms: 6000
+    revert_ms: 8000
+    min_move_ticks: 4
+    move_target_ticks: 10
+    min_orders: 3
+    burst_target_orders: 10
+    min_share: 0.25
+    min_reverse_fraction: 0.35
+    share_target: 0.60
+    min_score: 0.25
+    cooldown_ms: 8000
+    weights:
+      burst: 0.18
+      move: 0.22
+      share: 0.18
+      reverse: 0.26
+      revert: 0.16
+
+evaluation:
+  # An alert matches an episode when they overlap in time, name the same
+  # participant, and concern the same symbol. The asymmetric tolerance is
+  # because several detectors can only conclude anything after the fact:
+  # momentum ignition waits burst_ms + revert_ms by construction.
+  match:
+    pre_tolerance_ms: 2000
+    post_tolerance_ms: 20000
+
+  # What an analyst costs. Alerts per analyst hour is the number that decides
+  # whether a surveillance system is deployable, and it is a function of this.
+  triage_minutes_per_alert: 4
+  analyst_hours_per_day: 7.5
+
+  # The sweep re-scores recorded signal vectors, so this grid is free to be
+  # fine. It does not re-run the engine.
+  sweep:
+    start: 0.25
+    stop: 0.95
+    step: 0.025
+
+  # The operating point is the highest-F1 threshold that stays inside this
+  # budget. Stated as a rate rather than a count so it does not change
+  # meaning when the tape gets longer.
+  mm_false_positives_per_mm_hour: 6.0

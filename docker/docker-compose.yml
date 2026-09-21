@@ -1,0 +1,42 @@
+# The console and its back end.
+#
+# Neither container generates data. `make all` runs the pipeline on the host
+# and writes results/small/{tape.csv,tapewatch.db}; this stack reads them.
+# Keeping generation out of the containers means the numbers in the report
+# and the numbers on screen come from the same run by construction.
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: runtime
+    image: tapewatch-api
+    container_name: tapewatch-api
+    # Read-write: the analyst state tables (alert_state, cases) live in the
+    # same database and are written from the console.
+    volumes:
+      - ../${TAPEWATCH_RUN:-results/small}:/data
+    command: ["--db", "/data/tapewatch.db", "--tape", "/data/tape.csv"]
+    ports:
+      - "8090:8090"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8090/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+
+  console:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ui
+    image: tapewatch-console
+    container_name: tapewatch-console
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "5180:80"
+    restart: unless-stopped

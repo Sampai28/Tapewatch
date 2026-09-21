@@ -1,0 +1,127 @@
+# A sixty-second tape. This is what the container test stage runs: enough of
+# every pattern to exercise the whole pipeline end to end, far too little to
+# say anything about precision or recall. No number from this config appears
+# anywhere in the documentation.
+
+seed: 7
+
+market:
+  symbols: [TWX]
+  duration_seconds: 60
+  reference_price: 10000
+  tick_size: 1
+  warmup_ms: 1000
+  fair_value_interval_ms: 250
+  fair_value_sigma_ticks: 0.6
+  mm_levels: 3
+  mm_size: 30
+  mm_half_spread: 2
+  mm_interval_ms: 200
+  mm_reprice_ticks: 2
+  mm_skew_per_lot: 0.02
+  mm_max_inventory: 400
+  mm_flatten_at: 180
+  mm_flatten_clip: 90
+  information_interval_ms: 15000
+
+participants:
+  market_makers: 2
+  noise_traders: 5
+  takers: 4
+  momentum_followers: 2
+  informed_traders: 1
+
+abuse:
+  spoofers: 1
+  spoof_interval_ms: 8000
+  layerers: 1
+  layer_interval_ms: 9000
+  wash_pairs: 1
+  wash_interval_ms: 10000
+  igniters: 1
+  ignite_interval_ms: 12000
+  ignite_size: 90
+  ignite_orders: 8
+
+feed_defects:
+  drop_rate: 0.0002
+  duplicate_rate: 0.0003
+  transpose_rate: 0.0008
+  skew_rate: 0.0006
+  skew_ms: 25
+
+detectors:
+  tick_size: 1
+  max_resting_orders: 50000
+  window_capacity: 8192
+  scan_interval_ms: 500
+  reorder_tolerance_ms: 60
+  feed_degrade_ms: 2000
+  degrade_factor: 0.6
+
+  spoofing:
+    enabled: true
+    opposite_window_ms: 3000
+    max_lifetime_ms: 2000
+    size_depth_multiple: 3.0
+    near_touch_ticks: 5
+    min_qty: 20
+    min_score: 0.25
+    cooldown_ms: 5000
+    two_sided_penalty: 0.45
+    weights: { size: 0.28, life: 0.18, unfilled: 0.12, opposite: 0.30, press: 0.12 }
+
+  layering:
+    enabled: true
+    placement_window_ms: 4000
+    cancel_span_ms: 1500
+    opposite_window_ms: 4000
+    min_levels: 3
+    min_orders: 3
+    near_touch_ticks: 8
+    imbalance_target: 0.55
+    min_score: 0.25
+    cooldown_ms: 6000
+    two_sided_penalty: 0.30
+    weights: { levels: 0.24, imbalance: 0.24, coord: 0.18, opposite: 0.22, unfilled: 0.12 }
+
+  wash_trading:
+    enabled: true
+    window_ms: 30000
+    min_gross_qty: 40
+    recip_target: 0.70
+    share_target: 0.60
+    offmarket_ticks: 4
+    breadth_penalty: 0.45
+    breadth_target: 4.0
+    min_score: 0.25
+    cooldown_ms: 30000
+    weights: { self: 0.34, recip: 0.26, nonet: 0.16, share: 0.16, price: 0.08 }
+
+  momentum_ignition:
+    enabled: true
+    burst_ms: 2000
+    reversal_ms: 6000
+    revert_ms: 8000
+    min_move_ticks: 4
+    move_target_ticks: 10
+    min_orders: 3
+    burst_target_orders: 10
+    min_share: 0.25
+    min_reverse_fraction: 0.35
+    share_target: 0.60
+    min_score: 0.25
+    cooldown_ms: 8000
+    weights: { burst: 0.18, move: 0.22, share: 0.18, reverse: 0.26, revert: 0.16 }
+
+evaluation:
+  match:
+    pre_tolerance_ms: 2000
+    post_tolerance_ms: 20000
+  triage_minutes_per_alert: 4
+  analyst_hours_per_day: 7.5
+  sweep:
+    start: 0.25
+    stop: 0.9
+    step: 0.05
+  mm_false_positives_per_mm_hour: 6.0

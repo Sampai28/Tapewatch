@@ -1,0 +1,22 @@
+# The analyst console: build the bundle, serve it from nginx.
+#
+# nginx also proxies /api to the engine container, so the browser talks to a
+# single origin and there is no CORS to configure, no preflight on every
+# triage action, and nothing to get wrong when the port changes.
+
+FROM node:20-alpine AS build
+WORKDIR /app
+
+# package.json first: editing a component must not re-run the install.
+COPY ui/package.json ui/package-lock.json* ./
+# `npm ci` when a lockfile is present, which is the only reproducible option;
+# fall back to `npm install` so a fresh checkout without one still builds.
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+COPY ui/ ./
+RUN npm run build
+
+FROM nginx:1.27-alpine AS runtime
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
