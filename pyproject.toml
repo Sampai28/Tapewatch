@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tapewatch"
+version = "0.1.0"
+description = "Market abuse surveillance: synthetic market generation and detector evaluation"
+requires-python = ">=3.10"
+# Intentionally empty. Every module under python/ uses the standard library
+# and nothing else, so the pipeline runs on a bare interpreter with no pip,
+# no virtualenv and no network. The costs of that choice are a small YAML
+# subset parser (tapewatch/miniyaml.py), hand-rolled SVG charts
+# (tapewatch/svg.py), and SQLite rather than DuckDB. All three are noted in
+# docs/notes.md.
+dependencies = []
+
+[project.optional-dependencies]
+# Not required. The suite is unittest and runs with `python -m unittest`;
+# pytest is here only because some people prefer its runner.
+dev = ["pytest>=7"]
+
+[tool.setuptools]
+package-dir = { "" = "python" }
+
+[tool.setuptools.packages.find]
+where = ["python"]
+include = ["tapewatch*", "generate*", "eval*"]
+
+# Installation is optional too. The Makefile puts python/ on PYTHONPATH, so
+#     make all
+# works in a fresh checkout without installing anything.
+
+[tool.pytest.ini_options]
+testpaths = ["python/tests"]
+pythonpath = ["python"]
+
+[tool.ruff]
+line-length = 96
+target-version = "py310"
